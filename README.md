@@ -14,7 +14,7 @@ Worth is a personal finance app for people who want to see where their money goe
 
 This demo runs on your machine, doesn't connect to Plaid, and binds only to localhost. It starts its own temporary PostgreSQL cluster rather than reading or changing another database.
 
-1. Install Ruby **3.3.10**, Bundler **4.0.4**, and PostgreSQL **16** command-line tools. Make sure `initdb` and `pg_ctl` are on your PATH. Run as a regular user, not root.
+1. Install Ruby **3.3.14**, Bundler **4.0.4**, and PostgreSQL **16** command-line tools. Make sure `initdb` and `pg_ctl` are on your PATH. Run as a regular user, not root.
 2. In a fresh checkout, run:
 
    ```sh
