@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@78c62f2208e480ce3d5ae4dfd9b9e181acf48b63 # v1
+        with:
+          bundler-cache: true
+      - name: Check Ruby syntax
+        run: find app config db lib test -name '*.rb' -print0 | xargs -0 -n1 ruby -c
+      - name: Scan Rails code
+        run: bundle exec brakeman --no-pager
+      - name: Audit import-mapped JavaScript dependencies
+        run: bin/importmap audit
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: worth_test
+          POSTGRES_PASSWORD: ci-only-test-password
+          POSTGRES_DB: worth_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U worth_test -d worth_ci_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://worth_test:ci-only-test-password@127.0.0.1:5432/worth_ci_test
+      PARALLEL_WORKERS: 1
+      SECRET_KEY_BASE_DUMMY: "1"
+      ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ci-only-encryption-primary-32-char
+      ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ci-only-encryption-deterministic-32-char
+      ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ci-only-encryption-salt-32-char
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@78c62f2208e480ce3d5ae4dfd9b9e181acf48b63 # v1
+        with:
+          bundler-cache: true
+      - name: Run Rails tests against an isolated PostgreSQL database
+        run: |
+          bin/rails db:schema:load
+          bin/rails test

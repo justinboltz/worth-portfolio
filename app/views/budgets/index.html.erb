@@ -1,0 +1,53 @@
+<div class="page-heading"><div><p class="eyebrow">MAKE ROOM FOR WHAT MATTERS</p><h1>Monthly budgets</h1><p>Plan your spending and track what is available each month.</p></div></div>
+<section class="card">
+  <%= form_with url: budgets_path, method: :get, class: 'filter-bar', role: 'search' do |form| %>
+    <div><%= form.label :q, 'Search budget categories' %><%= form.search_field :q, value: params[:q] %></div>
+    <div><%= form.label :month, 'Budget month' %><%= form.month_field :month, value: @month.strftime('%Y-%m') %></div>
+    <div><%= form.label :currency, 'Currency' %><%= form.select :currency, options_for_select(TransactionSearch::CURRENCIES, params[:currency]), include_blank: 'All currencies' %></div>
+    <div><%= form.label :status, 'Budget status' %><%= form.select :status, options_for_select([['Over budget', 'over'], ['Within budget', 'within']], params[:status]), include_blank: 'All budgets' %></div>
+    <div class="filter-actions"><%= form.submit 'Apply filters', class: 'primary-button' %><%= link_to 'Reset', budgets_path, class: 'text-button' %></div>
+  <% end %>
+</section>
+<% if @budgets.empty? %><section class="card empty-state"><h3>No budgets to show.</h3><p>Reset the filters or create a budget below to get started.</p></section><% end %>
+<div class="budget-grid">
+  <% @budgets.each do |budget| %>
+    <% spent, available = @budget_totals.fetch(budget.id) %>
+    <section class="card padded">
+      <h2><%= budget.category.display_name %></h2>
+      <% remaining = available - spent %>
+      <p class="<%= 'budget-over' if remaining.negative? %>"><strong><%= money(remaining.abs, budget.currency) %></strong> <%= remaining.negative? ? 'over budget' : 'remaining' %></p>
+      <progress max="<%= [available, spent, 1].max %>" value="<%= spent %>" aria-label="<%= budget.category.name %> budget used"></progress>
+      <p><%= money(spent, budget.currency) %> of <%= money(available, budget.currency) %> available</p>
+      <small><%= budget.rollover? ? 'Unused amounts and overspending roll forward' : 'Resets every month' %> · Starts <%= budget.starts_on %></small>
+      <%= link_to 'View spending', transactions_path(category_id: budget.category_id, from: @month, to: @month.end_of_month, currency: budget.currency, reportable: '1'), class: 'secondary-button', aria: { label: "View spending for #{budget.category.display_name}" } %>
+      <details class="editor-details" <%= 'open' if budget.errors.any? %>>
+        <summary aria-label="Edit budget: <%= budget.category.display_name %>">Edit budget</summary>
+        <p>Changing the recurring amount recalculates rollover from the start month.</p>
+        <%= form_with model: budget, namespace: "budget_#{budget.id}", class: 'stack-form' do |f| %>
+          <%= render 'shared/form_errors', record: budget %>
+          <%= hidden_field_tag :month, @month.strftime('%Y-%m') %>
+          <label>Monthly amount<%= f.number_field :amount, min: 0, step: '0.01', 'aria-label': 'Monthly budget amount' %></label>
+          <label class="check-option"><%= f.check_box :rollover %> Rollover</label>
+          <div class="form-actions"><%= f.submit 'Update', class: 'primary-button' %></div>
+        <% end %>
+        <%= button_to 'Remove budget', budget_path(budget), method: :delete, class: 'danger-button', params: { month: @month.strftime('%Y-%m') }, form: { data: { turbo_confirm: "Remove the #{budget.category.name} budget? Your transactions will be kept." } } %>
+      </details>
+    </section>
+  <% end %>
+</div>
+<section class="card padded">
+  <h2>Create a recurring monthly budget</h2>
+  <p>Parent category budgets include all children. Overlapping category budgets are prevented.</p>
+  <%= form_with model: @draft, class: 'stack-form' do |f| %>
+    <%= render 'shared/form_errors', record: @draft %>
+    <%= hidden_field_tag :month, @month.strftime('%Y-%m') %>
+    <div class="form-grid">
+      <label>Category<%= f.select :category_id, @categories.map { |c| [c.display_name, c.id] }, required: true %></label>
+      <label>Monthly amount<%= f.number_field :amount, min: 0, step: '0.01', required: true %></label>
+      <label>Currency<%= f.select :currency, %w[USD CAD EUR GBP] %></label>
+      <label>Start date<%= f.date_field :starts_on, required: true %></label>
+    </div>
+    <label class="check-option"><%= f.check_box :rollover %> Roll unused amounts and overspending forward</label>
+    <div class="form-actions"><%= f.submit 'Create budget', class: 'primary-button' %></div>
+  <% end %>
+</section>

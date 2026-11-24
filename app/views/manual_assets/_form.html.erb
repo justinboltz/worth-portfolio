@@ -1,0 +1,15 @@
+<section class="card asset-form">
+  <p class="muted">Enter the value of your share of the asset, before subtracting any mortgage or loan. Linked debts are counted separately.</p>
+  <%= form_with model: @asset do |form| %>
+    <%= render "shared/form_errors", record: @asset %>
+    <div><%= form.label :name, "Asset name" %><%= form.text_field :name, required: true, placeholder: "My home" %></div>
+    <div><%= form.label :asset_type, "Type" %><%= form.select :asset_type, ManualAsset::TYPES.map { |key, label| [label, key] } %></div>
+    <div><%= form.label :value, "Estimated value (your share)" %><%= form.number_field :value, required: true, min: 0, step: "0.01" %></div>
+    <div><%= form.label :currency %><%= form.select :currency, %w[USD CAD EUR GBP], {}, disabled: @asset.persisted? %></div>
+    <div><%= form.label :valued_on, "Valuation date" %><%= form.date_field :valued_on, required: true, max: Date.current.iso8601 %></div>
+    <div><%= form.label :notes %><%= form.text_area :notes, rows: 3, placeholder: "Optional: valuation source or property details" %></div>
+    <p class="footnote">Updates on a new date preserve previous valuations. Updates on the same date correct that day's value.</p>
+    <div class="form-actions"><%= form.submit @asset.persisted? ? "Save changes" : "Add asset", class: "primary-button" %>
+    <%= link_to "Cancel", manual_assets_path, class: "text-button" %></div>
+  <% end %>
+</section>

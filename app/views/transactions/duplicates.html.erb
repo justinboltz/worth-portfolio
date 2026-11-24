@@ -1,0 +1,26 @@
+<div class="page-heading">
+  <div><h1>Possible duplicates</h1><p>Matches share a signed amount, currency, and merchant or description. Bank and CSV entries can be up to <%= DuplicateTransactionReview::POSTING_WINDOW_DAYS %> days apart.</p></div>
+  <%= link_to 'Back to transactions', transactions_path, class: 'secondary-button' %>
+</div>
+<p>Repeated purchases can look identical. Compare the accounts and sources, then select only the copies to exclude. The original should stay unselected.</p>
+<% if @groups.empty? %><section class="card padded"><p>No possible duplicates found by these matching rules.</p></section><% end %>
+<% @groups.each do |entries| %>
+  <section class="card padded">
+    <h2><%= entries.map(&:date).uniq.sort.join(' to ') %> · <%= money(entries.first.amount, entries.first.iso_currency_code) %></h2>
+    <% if entries.first.date != entries.last.date %><p>Possible posting date difference. Verify both entries before excluding a copy.</p><% end %>
+    <%= form_with url: bulk_update_transactions_path, method: :patch, data: { controller: 'duplicate-review', action: 'change->duplicate-review#update' } do %>
+      <%= hidden_field_tag 'bulk[duplicate]', '1' %>
+      <%= hidden_field_tag :duplicate_review, '1' %>
+      <div class="table-scroll"><table class="responsive-table" role="table" aria-label="Possible duplicate transactions">
+        <thead><tr><th scope="col">Exclude copy</th><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Account</th><th scope="col">Source</th></tr></thead>
+        <tbody><% entries.each do |entry| %><tr>
+          <td data-label="Review"><label><%= check_box_tag 'ids[]', entry.id, false, id: nil, 'aria-label': "Mark #{entry.name} on #{entry.date} from #{entry.source.humanize} as duplicate", data: { duplicate_review_target: 'item' } %> Exclude this copy</label></td>
+          <td data-label="Date"><%= entry.date %></td>
+          <td data-label="Description"><%= link_to entry.name, transaction_path(entry) %></td>
+          <td data-label="Account"><%= entry.account_label %></td><td data-label="Source"><%= entry.source.humanize %></td>
+        </tr><% end %></tbody>
+      </table></div>
+      <div class="form-actions"><%= submit_tag 'Mark selected as duplicates', class: 'secondary-button', data: { duplicate_review_target: 'submit', turbo_submits_with: 'Saving…' } %><span class="muted" role="status" data-duplicate-review-target="status"></span></div>
+    <% end %>
+  </section>
+<% end %>

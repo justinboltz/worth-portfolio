@@ -1,0 +1,14 @@
+<% rows = @split_rows || @transaction.splits.map { |split| { name: split.name, amount: split.amount, category_id: split.category_id } } %>
+<% rows = rows + Array.new([2 - rows.size, 0].max) { {} } %>
+<%= form_with url: split_transaction_path(@transaction), class: 'stack-form', data: { controller: 'split-editor', split_editor_total_value: @transaction.amount.to_s, split_editor_currency_value: @transaction.iso_currency_code, action: 'input->split-editor#update' } do %>
+  <% if @split_error %><div class="form-errors" role="alert"><%= @split_error %></div><% end %>
+  <div class="split-rows" data-split-editor-target="rows">
+    <% rows.each_with_index do |row, index| %><%= render 'split_row', row: row, index: index %><% end %>
+  </div>
+  <template data-split-editor-target="template"><%= render 'split_row', row: {}, index: '__INDEX__' %></template>
+  <div class="split-feedback" data-split-editor-target="feedback" role="status" aria-live="polite" hidden></div>
+  <div class="form-actions">
+    <%= submit_tag 'Save splits', class: 'primary-button', data: { turbo_submits_with: 'Saving…' } %>
+    <button type="button" class="secondary-button" data-split-editor-target="add" data-action="split-editor#add" hidden>Add split</button>
+  </div>
+<% end %>

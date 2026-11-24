@@ -1,0 +1,17 @@
+<div class="page-heading"><div><p class="eyebrow">ACCOUNT SETTINGS</p><h1>Change password</h1><p>Update the password you use to sign in to Worth.</p></div></div>
+<section class="card padded content-narrow">
+<%= render "shared/form_errors", record: @user %>
+<%= form_with model: @user, url: password_path, method: :patch, class: "stack-form" do |form| %>
+  <%= render "shared/password_field", form: form, attribute: :current_password,
+        label: "Current password", autocomplete: "current-password" %>
+  <%= render "shared/password_field", form: form, attribute: :password,
+        label: "New password", autocomplete: "new-password" %>
+  <%= render "shared/password_field", form: form, attribute: :password_confirmation,
+        label: "Confirm new password", autocomplete: "new-password" %>
+
+  <div class="form-actions">
+    <%= form.submit "Update password", class: "primary-button" %>
+    <%= link_to "Cancel", root_path, class: "text-button" %>
+  </div>
+<% end %>
+</section>

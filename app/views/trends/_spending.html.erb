@@ -1,0 +1,52 @@
+<section class="card padded">
+  <h2><%= @spending_view == 'cost_type' ? 'Fixed & variable expenses' : 'Spending by parent category' %></h2>
+  <nav class="chart-switch" aria-label="Spending breakdown">
+    <% { 'category' => 'Categories', 'cost_type' => 'Fixed & variable' }.each do |view, label| %>
+      <%= link_to label, trends_path(transaction_filter_params.merge(spending_view: view, month: params[:month])), aria: { current: @spending_view == view ? 'page' : nil } %>
+    <% end %>
+  </nav>
+  <%= form_with url: trends_path, method: :get, class: 'month-picker' do |form| %>
+    <% transaction_filter_params.except('from', 'to').each do |key, value| %><%= hidden_field_tag key, value, id: nil %><% end %>
+    <%= hidden_field_tag :spending_view, @spending_view, id: nil %>
+    <div><%= form.label :month, 'View a month' %><%= form.month_field :month, value: @from.strftime('%Y-%m'), max: Date.current.strftime('%Y-%m'), required: true %></div>
+    <%= form.submit 'View month', class: 'secondary-button' %>
+  <% end %>
+  <p class="muted"><%= @from.strftime('%b %-d, %Y') %> – <%= @to.strftime('%b %-d, %Y') %> · <%= @currency %> · Posted spending</p>
+  <% if @report.spending.positive? %>
+    <% cost_type = @spending_view == 'cost_type'; slices = cost_type ? @report.expense_types.to_a : @report.categories; colors = cost_type ? ExpenseClassification::COLORS.values : FinancialReport::COLORS %>
+    <div class="pie-layout">
+      <div class="pie-chart" style="background: <%= spending_gradient(slices, @report.spending, colors: colors) %>" role="img" aria-label="Spending breakdown; amounts and percentages listed alongside"></div>
+      <div class="spending-legend">
+        <% slices.each_with_index do |(group, amount), i| %>
+          <% filters = transaction_filter_params.except('sort', 'direction').merge(from: @from, to: @to, currency: @currency, flow: 'outflow', reportable: '1') %>
+          <% label = cost_type ? ExpenseClassification::LABELS.fetch(group) : group&.name || 'Uncategorized'; filters = filters.merge(cost_type ? { expense_type: group } : { category_id: group&.id || 'uncategorized' }) %>
+          <div class="spending-legend-row"><span class="legend-dot" style="background:<%= colors[i % colors.size] %>"></span><%= link_to label, transactions_path(filters) %><span><strong><%= money(amount, @currency) %></strong><small><%= number_to_percentage(amount / @report.spending * 100, precision: 1) %></small></span></div>
+        <% end %>
+      </div>
+    </div>
+    <p class="spending-summary">Total expenses <strong><%= money(@report.spending, @currency) %></strong></p>
+  <% else %>
+    <div class="empty-state"><h3>No spending in this range</h3><p>Choose another month or adjust your filters.</p></div>
+  <% end %>
+  <% if @spending_view == 'cost_type' %>
+    <p class="muted">Fixed costs usually stay the same; variable costs change with usage. Uncertain expenses stay unclassified. Recurring bills are not automatically fixed.</p>
+    <%= link_to 'Customize category expense types', categories_path, class: 'text-button' %>
+    <p class="muted">You can also override the expense type on individual transactions.</p>
+  <% end %>
+</section>
+<section class="card padded">
+  <% if @spending_view == 'cost_type' %>
+    <h2>Monthly expense breakdown</h2>
+    <% @report.expense_monthly.each do |month, totals| %>
+      <div class="expense-month"><h3><%= month.strftime('%B %Y') %></h3>
+        <% totals.each do |type, amount| %><div class="expense-month-row"><span><span class="legend-dot" style="background:<%= ExpenseClassification::COLORS.fetch(type) %>"></span><%= ExpenseClassification::LABELS.fetch(type) %></span><strong><%= money(amount, @currency) %></strong></div><% end %>
+        <div class="expense-month-row expense-month-total"><span>Total</span><strong><%= money(totals.values.sum, @currency) %></strong></div>
+      </div>
+    <% end %>
+    <% if @report.expense_monthly.empty? %><p class="muted">Your monthly totals will appear here when there is spending in the selected range.</p><% end %>
+  <% else %>
+    <h2>Income and spending by month</h2>
+    <% maximum = @report.monthly.flat_map { |_, spent, income| [spent, income] }.max || 1 %>
+    <% @report.monthly.each do |month, spent, income| %><div class="category-row"><strong><%= month.strftime('%b %Y') %></strong><div>Income <span><%= money(income, @currency) %></span></div><progress value="<%= income %>" max="<%= [maximum, 1].max %>" aria-label="Income <%= month %>"></progress><div>Spending <span><%= money(spent, @currency) %></span></div><progress class="expense-progress" value="<%= spent %>" max="<%= [maximum, 1].max %>" aria-label="Spending <%= month %>"></progress></div><% end %>
+  <% end %>
+</section>

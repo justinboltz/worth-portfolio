@@ -1,0 +1,6 @@
+<div class="split-row" role="group" aria-label="Split <%= index == '__INDEX__' ? '__NUMBER__' : index + 1 %>" data-split-index="<%= index %>" data-split-editor-target="row">
+  <label>Description<%= text_field_tag "splits[#{index}][name]", row[:name], id: "split_#{index}_name", placeholder: 'e.g. Groceries' %></label>
+  <label>Amount<%= number_field_tag "splits[#{index}][amount]", row[:amount], id: "split_#{index}_amount", step: '0.0001', inputmode: 'decimal', data: { split_editor_target: 'amount' } %></label>
+  <label class="split-category">Category<%= select_tag "splits[#{index}][category_id]", options_for_select(@category_options, row[:category_id]), id: "split_#{index}_category", include_blank: 'Uncategorized' %></label>
+  <button type="button" class="text-button split-remove" data-action="split-editor#remove" data-split-editor-target="remove" hidden>Remove row</button>
+</div>

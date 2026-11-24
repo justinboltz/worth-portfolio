@@ -1,0 +1,19 @@
+        <% if category.user_id == current_user.id %>
+          <%= render 'shared/form_errors', record: category %>
+          <%= form_with model: category, namespace: "category_#{category.id}", class: 'inline-controls', data: { turbo_frame: '_top' } do |f| %>
+            <%= f.text_field :name, 'aria-label': "Rename #{category.name}" %>
+            <%= f.select :parent_id, @categories.reject { |target| category.subtree_ids.include?(target.id) }.map { |target| [target.display_name, target.id] }, { include_blank: 'Top level' }, { 'aria-label': "Parent of #{category.name}" } %>
+            <%= f.submit 'Save', class: 'secondary-button' %>
+          <% end %>
+        <% end %>
+        <%= form_with url: merge_category_path(category), class: 'inline-controls', data: { turbo_frame: '_top', turbo_confirm: "Merge your usage of #{category.name} into the selected category? This moves matching transactions, rules, and saved mappings, and cannot be undone automatically." } do %>
+          <%= select_tag :target_id, options_for_select(@categories.reject { |target| category.subtree_ids.include?(target.id) }.map { |target| [target.display_name, target.id] }), required: true, include_blank: 'Merge into…', id: "merge_category_#{category.id}", 'aria-label': "Merge #{category.name} into" %>
+          <%= submit_tag 'Merge my usage', class: 'secondary-button' %>
+        <% end %>
+
+<% preference = current_user.category_expense_types.find_by(category: category) %>
+<%= form_with url: expense_type_category_path(category), method: :patch, class: 'category-expense-form', data: { turbo_frame: '_top' } do |form| %>
+  <%= form.label :expense_type, 'Expense type for your reports', for: "category_#{category.id}_expense_type" %>
+  <div class="inline-controls"><%= form.select :expense_type, options_for_select([['Use default / inherit parent', 'automatic']] + ExpenseClassification::LABELS.map { |value, label| [label, value] }, preference&.expense_type || 'automatic'), {}, id: "category_#{category.id}_expense_type" %><%= form.submit 'Save expense type', class: 'secondary-button' %></div>
+  <p class="muted">Currently <%= ExpenseClassification::LABELS.fetch(ExpenseClassification.new(current_user).for_category(category.id)).downcase %>. Applies to your transactions and child categories unless overridden. Shared categories stay unchanged for other users.</p>
+<% end %>

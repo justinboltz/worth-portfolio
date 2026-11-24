@@ -1,0 +1,22 @@
+<%= form_with model: @item, class: 'stack-form' do |form| %>
+  <%= render 'shared/form_errors', record: @item %>
+  <% if @source_transaction %><%= hidden_field_tag :transaction_id, @source_transaction.id %><% end %>
+  <div class="form-grid">
+    <label>Name<%= form.text_field :name, required: true, maxlength: 120, placeholder: 'e.g. Internet, gym membership, or paycheck' %></label>
+    <label>Expected amount<%= form.number_field :amount, required: true, min: '0.0001', step: '0.0001', inputmode: 'decimal' %></label>
+    <% if @item.merchant_key.blank? %>
+      <label>Currency<%= form.select :currency, TransactionSearch::CURRENCIES %></label>
+      <label>Type<%= form.select :direction, [['Payment', 'expense'], ['Income', 'income']] %></label>
+      <label>Account (optional)<%= form.select :account_id, @accounts.map { |account| [account.name, account.id] }, include_blank: 'No account specified' %></label>
+    <% else %>
+      <div class="form-field"><span class="muted">Linked history</span><strong><%= @item.account_label %></strong><span><%= @item.currency %> · <%= @item.direction == 'income' ? 'Income' : 'Payment' %></span></div>
+    <% end %>
+    <label>Frequency<%= form.select :frequency, RecurringItem::FREQUENCIES.map { |value, label| [label, value] } %></label>
+    <label>Next expected date<%= form.date_field :next_on, required: true %></label>
+    <label>Status<%= form.select :status, [['Active', 'active'], ['Paused', 'paused']] %></label>
+    <label class="form-field-wide">Notes (optional)<%= form.text_area :notes, placeholder: 'Renewal details or anything to check before the next payment' %></label>
+  </div>
+  <label class="check-option"><%= form.check_box :month_end %> Use the last day of the month for monthly, quarterly, or yearly schedules</label>
+  <p class="muted">Dates and amounts are estimates you control. Monthly schedules use the selected day, or the last day of a shorter month. Paused items are excluded from the outlook.</p>
+  <div class="form-actions"><%= form.submit @item.persisted? ? 'Save recurring item' : 'Confirm recurring item', class: 'primary-button', data: { turbo_submits_with: 'Saving…' } %><%= link_to 'Cancel', recurring_items_path, class: 'text-button' %></div>
+<% end %>

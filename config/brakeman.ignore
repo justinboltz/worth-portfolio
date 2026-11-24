@@ -1,0 +1,73 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "7f4bd3a2388f2ad8fe487936e700ae1e6d0e6f633347639dfa564095257b08e3",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/transaction_search.rb",
+      "line": 79,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"#{:BRAKEMAN_SAFE_LITERAL} #{direction.upcase}, transactions.id #{direction.upcase}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "TransactionSearch",
+        "method": "ordered"
+      },
+      "user_input": "direction.upcase",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Sort expression is selected from a fixed field map; sort direction is restricted to asc or desc."
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "d8afcc07ffc3dfdc89afde6525d414e037df5d012d8ef37aafb2385e0fdd9ae5",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/recurring_items_controller.rb",
+      "line": 94,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:recurring_item).permit(:name, :amount, :currency, :direction, :frequency, :next_on, :month_end, :account_id, :status, :notes)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RecurringItemsController",
+        "method": "item_params"
+      },
+      "user_input": ":account_id",
+      "confidence": "High",
+      "cwe_id": [
+        915
+      ],
+      "note": "Records are scoped to the authenticated user, and the model rejects an account owned by another user."
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "f5a51b3ed8bc35aa86e123014032d2a21fc6c770847f6080d7cd368b8c3aa886",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/transaction_rules_controller.rb",
+      "line": 56,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:transaction_rule).permit(:match_text, :description_operator, :account_id, :source_account_name, :category_id, :kind, :tags)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "TransactionRulesController",
+        "method": "rule_params"
+      },
+      "user_input": ":account_id",
+      "confidence": "High",
+      "cwe_id": [
+        915
+      ],
+      "note": "Records are scoped to the authenticated user, and model validation rejects accounts owned by another user, including during preview."
+    }
+  ]
+}

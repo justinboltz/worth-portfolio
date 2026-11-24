@@ -1,0 +1,3 @@
+<section class="card padded"><h2>Workbook notes</h2><ul><% warnings.each do |warning| %><li><%= warning %></li><% end %></ul>
+<% if rules.any? %><details><summary>AutoCat rules for reference (not activated)</summary><div class="table-scroll"><table><thead><tr><th>Row</th><th>Category</th><th>Conditions</th></tr></thead><tbody><% rules.each do |rule| %><tr><td><%= rule['_row'] %></td><td><%= rule['Category'] %></td><td><%= rule.except('_row', 'Category').reject { |_, value| value.blank? }.map { |key, value| "#{key}: #{value}" }.join('; ') %></td></tr><% end %></tbody></table></div></details><% end %>
+</section>

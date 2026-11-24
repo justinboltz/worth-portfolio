@@ -1,0 +1,44 @@
+<% filter_context = local_assigns[:report] ? { spending_view: @spending_view } : {} %>
+<%= form_with url: destination, method: :get, class: 'transaction-search', role: 'search' do |form| %>
+  <% filter_context.each do |key, value| %><%= hidden_field_tag key, value, id: nil %><% end %>
+  <div class="search-toolbar">
+
+  <div class="search-field"><%= form.label :q, 'Search transactions' %><%= form.search_field :q, value: params[:q], placeholder: 'Search descriptions, notes, tags, or accounts' %></div>
+    <%= form.submit 'Search', class: 'primary-button' %>
+  </div>
+  <% active_filters = transaction_filter_labels %>
+  <% if active_filters.any? %>
+    <div class="active-filters" aria-label="Active filters">
+      <% active_filters.each do |key, label| %>
+        <%= link_to destination + '?' + transaction_filter_params.except(key).merge(filter_context).merge(local_assigns[:report] && params[:month].present? ? { month: params[:month] } : {}).to_query, class: 'filter-chip', aria: { label: "Remove filter: #{label}" } do %><%= label %><span aria-hidden="true">×</span><% end %>
+      <% end %>
+      <%= link_to 'Clear all', destination + '?' + filter_context.to_query, class: 'text-button' %>
+    </div>
+  <% end %>
+  <details class="filter-panel" <%= 'open' if @filter_errors.present? %>>
+    <summary>Filters &amp; sorting<% if active_filters.any? %><span class="filter-query"> · <%= pluralize(active_filters.size, 'active filter') %></span><% end %></summary>
+    <div class="filter-bar">
+  <div><%= form.label :account_id, 'Linked account' %><%= form.select :account_id, options_from_collection_for_select(@sidebar_accounts, :id, :name, params[:account_id]), include_blank: 'All linked accounts' %></div>
+  <div><%= form.label :source_account_name, 'Imported account' %><%= form.select :source_account_name, options_for_select(@source_accounts, params[:source_account_name]), include_blank: 'All imported accounts' %></div>
+  <div><%= form.label :category_id, 'Category (includes children)' %><%= form.select :category_id, options_for_select([['Uncategorized', 'uncategorized']] + @category_options, params[:category_id]), include_blank: 'All categories' %></div>
+  <div><%= form.label :expense_type, 'Expense type' %><%= form.select :expense_type, options_for_select(ExpenseClassification::LABELS.map { |value, label| [label, value] }, params[:expense_type]), include_blank: 'All expense types' %></div>
+  <div><%= form.label :from, 'From' %><%= form.date_field :from, value: local_assigns[:from] || params[:from] %></div>
+  <div><%= form.label :to, 'To' %><%= form.date_field :to, value: local_assigns[:to] || params[:to] %></div>
+  <div><%= form.label :currency, 'Currency' %><%= form.select :currency, options_for_select(TransactionSearch::CURRENCIES, local_assigns[:currency] || params[:currency]), include_blank: local_assigns[:report] ? false : 'All currencies' %></div>
+  <div><%= form.label :source, 'Source' %><%= form.select :source, options_for_select([['Bank sync', 'plaid'], ['File import', 'import'], ['Manual entry', 'manual']], params[:source]), include_blank: 'All sources' %></div>
+  <div><%= form.label :flow, 'Direction' %><%= form.select :flow, options_for_select([['Spending / outflow', 'outflow'], ['Income / inflow', 'inflow']], params[:flow]), include_blank: 'Both directions' %></div>
+  <div><%= form.label :min_amount, 'Minimum amount (absolute)' %><%= form.number_field :min_amount, value: params[:min_amount], min: 0, step: '0.0001' %></div>
+  <div><%= form.label :max_amount, 'Maximum amount (absolute)' %><%= form.number_field :max_amount, value: params[:max_amount], min: 0, step: '0.0001' %></div>
+  <div><%= form.label :tag, 'Exact tag' %><%= form.text_field :tag, value: params[:tag] %></div>
+  <% unless local_assigns[:report] %>
+    <div><%= form.label :flag, 'Review flag' %><%= form.select :flag, options_for_select(%w[hidden duplicate transfer card_payment pending split_needs_review suggested category_review].map { |value| [value.humanize, value] }, params[:flag]), include_blank: 'All transactions' %></div>
+    <div><%= form.label :reportable, 'Reporting' %><%= form.select :reportable, options_for_select([['Included in reports only', '1']], params[:reportable]), include_blank: 'Include excluded activity' %></div>
+    <div><%= form.label :sort, 'Sort by' %><%= form.select :sort, options_for_select([['Date', 'date'], ['Description', 'name'], ['Amount (signed)', 'amount']], @search.sort) %></div>
+    <div><%= form.label :direction, 'Order' %><%= form.select :direction, options_for_select([['Descending', 'desc'], ['Ascending', 'asc']], @search.direction) %></div>
+    <div><%= form.label :per_page, 'Per page' %><%= form.select :per_page, options_for_select([25, 50, 100], @per_page) %></div>
+  <% end %>
+  <div class="filter-actions"><%= form.submit 'Apply filters', class: 'primary-button' %><%= link_to 'Reset filters', destination + '?' + filter_context.to_query, class: 'text-button' %></div>
+    </div>
+  </details>
+<% end %>
+<% if @filter_errors.present? %><div class="flash flash-alert filter-errors" role="alert"><strong>Check your filters</strong><ul><% @filter_errors.each do |error| %><li><%= error %></li><% end %></ul></div><% end %>

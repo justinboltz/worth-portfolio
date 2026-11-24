@@ -1,0 +1,54 @@
+#!/bin/sh
+# Run a local demonstration without connecting to an existing database or bank.
+set -eu
+cd "$(dirname "$0")/.."
+
+for command in ruby bundle initdb pg_ctl; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    printf 'Missing %s. Add Ruby, Bundler, and PostgreSQL tools to PATH.\n' "$command" >&2
+    exit 1
+  fi
+done
+if [ -e config/master.key ] || [ -e config/credentials.yml.enc ] ||
+   [ -e config/credentials/development.key ] || [ -e config/credentials/development.yml.enc ]; then
+  echo 'Use a fresh checkout without local Rails credentials for this demo.' >&2
+  exit 1
+fi
+bundle check
+
+unset RAILS_MASTER_KEY PLAID_CLIENT_ID PLAID_SECRET SECRET_KEY_BASE_DUMMY
+unset ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+unset PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD PGSERVICE PGSERVICEFILE PGOPTIONS RAILS_RELATIVE_URL_ROOT
+export RAILS_ENV=development RACK_ENV=development WORTH_DEMO=1
+export SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')"
+
+demo_dir="$(mktemp -d /tmp/worth-demo.XXXXXX)"
+started=0
+cleanup() {
+  if [ "$started" -eq 1 ]; then
+    pg_ctl -D "$demo_dir/db" -m fast -w stop >/dev/null || return
+  fi
+  rm -rf -- "$demo_dir"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+mkdir "$demo_dir/socket"
+initdb -D "$demo_dir/db" -A trust --no-locale -E UTF8 >/dev/null
+pg_ctl -D "$demo_dir/db" -l "$demo_dir/postgres.log" \
+  -o "-c listen_addresses='' -k $demo_dir/socket -p 5432" -w start >/dev/null
+started=1
+
+export DATABASE_HOST="$demo_dir/socket" DATABASE_PORT=5432 DATABASE_USERNAME="$(id -un)"
+export DATABASE_URL="postgresql:///worth_demo?host=$demo_dir/socket"
+unset DATABASE_PASSWORD
+export PIDFILE="$demo_dir/rails.pid"
+
+bin/rails db:prepare
+bin/rails runner db/demo.rb
+
+printf '\nOpen http://127.0.0.1:%s/sign_in\n' "${PORT:-3000}"
+printf 'Email: demo@example.com\nPassword: worth-demo-local\n'
+printf 'Only synthetic data is loaded. Stop with Ctrl+C to discard it.\n\n'
+bin/rails server --binding 127.0.0.1 --port "${PORT:-3000}"

@@ -1,0 +1,72 @@
+<div class="page-heading"><div><p class="eyebrow">TILLER WORKBOOK</p><h1><%= @batch.imported_at ? 'Import complete' : 'Review your workbook' %></h1><p>Transactions, categories and dated account balances</p></div></div>
+<% if @batch.imported_at %>
+  <% result = @batch.settings.fetch('result') %>
+  <section class="card padded">
+    <h2>Your history is saved</h2>
+    <p><%= pluralize(number_with_delimiter(result['transactions']), 'new transaction') %>, <%= pluralize(number_with_delimiter(result['balances']), 'new daily balance') %> and <%= pluralize(number_with_delimiter(result['asset_valuations'].to_i), 'new asset valuation') %>.</p>
+    <p><%= pluralize(result['accounts'], 'new account') %> and <%= pluralize(result['categories'], 'new category') %>. <%= pluralize(number_with_delimiter(result['existing_daily_balances_preserved'].to_i), 'existing daily balance') %> and <%= pluralize(number_with_delimiter(result['existing_asset_valuations_preserved'].to_i), 'existing asset valuation') %> kept.</p>
+    <% if result.key?('already_imported') %><p><%= pluralize(number_with_delimiter(result['already_imported']), 'transaction') %> already imported. <%= pluralize(result['changed_transactions'], 'changed source row') %> skipped to preserve existing entries. <%= pluralize(result['skipped_duplicates'], 'possible duplicate') %> skipped by your choice.</p><% else %><p><%= pluralize(result['skipped'], 'transaction') %> skipped.</p><% end %>
+    <p><%= pluralize(result['duplicates'], 'possible duplicate') %> imported with a flag and excluded from reports until reviewed. <%= pluralize(result['skipped_balances'].to_i, 'balance date') %> skipped by your account choices.</p>
+    <% changes = @batch.settings.fetch('changed_source_rows', []) %><% if changes.any? %><details><summary>Review changed source rows (existing transactions kept)</summary><ul><% changes.each do |row| %><li>Row <%= row['row'] %>: <%= row['date'] %> · <%= row['name'] %><small><%= row['reason'] %></small></li><% end %></ul></details><% end %>
+    <div class="form-actions"><%= link_to 'View transactions', transactions_path, class: 'primary-button' %><%= link_to 'Review flagged duplicates', transactions_path(flag: 'duplicate'), class: 'secondary-button' %><%= link_to 'View trends', trends_path, class: 'secondary-button' %></div>
+    <p class="import-help"><%= link_to 'Import an updated workbook', new_import_path %>. Existing transaction IDs and saved balance dates will be skipped; edits made in Worth are kept.</p>
+  </section>
+  <% warnings = @batch.settings.fetch('warnings', []) %>
+<% else %>
+  <% summary = @tiller.summary; warnings = @tiller.data['warnings'] %>
+  <%= render 'tiller_notes', warnings: warnings, rules: @tiller.data['rules'] %>
+  <div class="import-summary" aria-label="Workbook summary">
+    <span><strong><%= number_with_delimiter(summary['ready']) %></strong> ready</span>
+    <span><strong><%= summary['duplicates'] %></strong> <%= 'possible duplicate'.pluralize(summary['duplicates']) %></span>
+    <span><strong><%= summary['already_imported'] %></strong> already imported</span>
+    <span><strong><%= summary['changed_transactions'] %></strong> <%= 'changed source row'.pluralize(summary['changed_transactions']) %> skipped</span>
+    <span><strong><%= number_with_delimiter(summary.fetch('new_balances', 0)) %></strong> <%= 'new daily balance'.pluralize(summary.fetch('new_balances', 0)) %></span>
+    <span><strong><%= number_with_delimiter(summary.fetch('new_asset_valuations', 0)) %></strong> <%= 'new asset valuation'.pluralize(summary.fetch('new_asset_valuations', 0)) %></span>
+  </div>
+  <% if @tiller.errors.any? %>
+    <div class="flash flash-alert" role="alert"><p>Resolve these <%= pluralize(@tiller.errors.size, 'issue') %> before importing. Update account choices below, or correct the workbook and upload it again.</p><ul><% @tiller.errors.first(100).each do |error| %><li><%= error %></li><% end %></ul><%= link_to 'Upload a corrected workbook', new_import_path %></div>
+  <% end %>
+  <%= form_with url: import_path(@batch), method: :patch do %>
+    <section class="card padded">
+      <h2>Currency and duplicate handling</h2>
+      <p>Tiller's negative expenses become positive spending in Worth. Positive income becomes negative. Full descriptions and notes are kept.</p>
+      <div class="form-grid"><label>Workbook currency <%= select_tag :currency, options_for_select(Imports::TillerPreview::CURRENCIES, @tiller.currency) %></label></div>
+      <label class="check-option"><%= hidden_field_tag :include_duplicates, '0' %><%= check_box_tag :include_duplicates, '1', @batch.settings['include_duplicates'] == '1' %> Keep possible duplicates as flagged transactions, excluded from reports until reviewed</label>
+      <p>Uncheck to skip possible duplicates. Existing transactions and edits made in Worth are kept. An existing Tiller ID with a changed date, amount or account is listed as a source change and skipped.</p>
+      <p>Bank matches use the same amount and description within 14 days, or the same matched account, date and amount even when descriptions differ. These are suggestions to review, not automatic deletions.</p>
+    </section>
+    <section class="card padded">
+      <h2>Match your accounts</h2>
+      <p>Previous account choices are reused. Suggested new matches require a matching bank and account number, or a unique asset name. Review these choices before confirming.</p>
+      <p>Choose an existing manual asset to add its dated valuations without creating a second asset. Existing dates are kept; a newer valuation date updates its current value. Choose “Transactions only” to skip balances entirely.</p>
+      <p>New imported accounts use their latest saved balance, which may be old. Linked accounts keep their current bank balance and tracking settings. Existing daily observations are preserved. Tiller's hidden accounts stay available for transactions but are excluded from net worth when created here.</p>
+      <div class="table-scroll"><table class="responsive-table" aria-label="Account mapping"><thead><tr><th>Source account</th><th>Type / group</th><th>Import into</th></tr></thead><tbody>
+      <% @tiller.data['accounts'].each_with_index do |source, index| %>
+        <tr><td data-label="Source account"><strong><%= source['name'] %></strong><small><%= [source['institution'], source['mask']].reject(&:blank?).join(' · ') %></small></td>
+          <td data-label="Type / group"><%= source['class'].presence || 'Transactions only' %><small><%= source['group'] %><%= ' · Excluded from net worth' if source['hidden'] %></small></td>
+          <td data-label="Import into"><%= label_tag "tiller_account_#{index}", "Match #{source['name']}", class: 'sr-only' %><%= select_tag "accounts[#{source['key']}]", options_for_select([['Create imported account', 'new'], ['Transactions only (skip balances)', 'transactions_only']] + @tiller.accounts.map { |account| ["#{account.name}#{account.mask.present? ? " (#{account.mask})" : ''} · #{account.iso_currency_code}", account.id.to_s] } + @tiller.manual_assets.map { |asset| ["Manual asset: #{asset.name} · #{asset.currency}", "asset:#{asset.id}"] }, @tiller.account_selection(source)), id: "tiller_account_#{index}" %><small><%= @tiller.account_mapping.explanation(source) %></small></td></tr>
+      <% end %>
+      </tbody></table></div>
+      <div class="form-actions"><%= submit_tag 'Update preview', class: 'secondary-button', data: { turbo_submits_with: 'Updating preview…' } %></div>
+    </section>
+    <section class="card padded">
+      <h2>Categories and balances</h2>
+      <p>Category groups become parent categories. Source categories are kept, including names used only by older transactions. Hidden and transfer categories retain their reporting exclusions. Existing personal categories with the same name and group are reused.</p>
+      <p><%= number_with_delimiter(summary['balance_observations']) %> balance observations become <%= number_with_delimiter(summary['daily_balances']) %> daily values. When a day has several observations, Worth uses the latest one. Existing daily balances are kept.</p>
+      <p><%= number_with_delimiter(summary.fetch('existing_daily_balances_preserved', 0)) %> daily balances and <%= number_with_delimiter(summary.fetch('existing_asset_valuations_preserved', 0)) %> asset valuations are already saved. <%= number_with_delimiter(summary.fetch('skipped_balances', 0)) %> balance dates will be skipped by your account choices.</p>
+      <details><summary>Review <%= summary['categories'] %> source categories</summary><ul><% @tiller.data['categories'].each do |category| %><li><%= [category['group'], category['name']].reject(&:blank?).uniq.join(' > ') %><%= " · #{category['type']}" if category['type'].present? %><%= ' · Hidden' if category['hidden'] %></li><% end %></ul></details>
+    </section>
+    <section class="card padded">
+      <h2>Transaction preview</h2>
+      <p><%= link_to 'All rows', import_path(@batch) %> · <%= link_to 'Possible duplicates', import_path(@batch, review: 'duplicates') %> · <%= link_to 'Source changes', import_path(@batch, review: 'changes') %>. Save account choices with Update preview before changing pages.</p>
+      <div class="table-scroll preview-scroll"><table class="responsive-table" aria-label="Tiller transaction preview"><thead><tr><th>Source row</th><th>Date</th><th>Description / account</th><th>Category</th><th>Amount</th><th>Review</th></tr></thead><tbody>
+      <% @preview_rows.each do |entry| %><% row = entry[:data] %>
+        <tr><td data-label="Source row"><%= row['row'] %></td><td data-label="Date"><%= row['date'] %></td><td data-label="Description / account"><%= row['name'] %><small><%= row['source_account_name'] %></small></td><td data-label="Category"><%= row['category'].presence || 'Uncategorized' %><small><%= 'Hidden ' if row['hidden'] %><%= 'Transfer' if row['transfer'] %></small></td><td data-label="Amount"><%= money(BigDecimal(row['amount']), @tiller.currency) %></td><td data-label="Review"><%= entry[:existing] ? 'Already imported' : entry[:conflict] ? 'Source changed — skipped' : entry[:duplicate] ? 'Possible duplicate' : 'Ready' %><% unless entry[:existing] %><small><%= entry[:reason] %></small><% end %></td></tr>
+      <% end %>
+      </tbody></table></div>
+      <nav class="form-actions" aria-label="Preview pages"><% if @preview_page > 1 %><%= link_to 'Previous', import_path(@batch, page: @preview_page - 1, review: params[:review]), class: 'secondary-button' %><% end %><span>Page <%= @preview_page %> of <%= @preview_pages %></span><% if @preview_page < @preview_pages %><%= link_to 'Next', import_path(@batch, page: @preview_page + 1, review: params[:review]), class: 'secondary-button' %><% end %></nav>
+      <div class="form-actions"><%= submit_tag 'Confirm workbook import', name: :commit_import, class: 'primary-button', disabled: @tiller.errors.any? || (summary['transactions'].zero? && summary['daily_balances'].zero?), data: { turbo_submits_with: 'Importing your history…' } %></div>
+    </section>
+  <% end %>
+<% end %>
+<% if @batch.imported_at %><%= render 'tiller_notes', warnings: warnings, rules: @batch.settings.fetch('autocat_reference', []) %><% end %>

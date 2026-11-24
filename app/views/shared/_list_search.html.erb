@@ -1,0 +1,5 @@
+<section class="card list-search"><%= form_with url: destination, method: :get, class: 'filter-bar', role: 'search' do |form| %>
+  <div class="search-field"><%= form.label :q, 'Search' %><%= form.search_field :q, value: params[:q], placeholder: placeholder %></div>
+  <% if local_assigns[:choices] %><div><%= form.label :kind, 'Filter by type' %><%= form.select :kind, options_for_select(choices, params[:kind]), include_blank: 'All types' %></div><% end %>
+  <div class="filter-actions"><%= form.submit 'Search', class: 'primary-button' %><%= link_to 'Reset', destination, class: 'text-button' %></div>
+<% end %></section>

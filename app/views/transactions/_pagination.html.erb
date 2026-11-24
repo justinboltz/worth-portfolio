@@ -1,0 +1,7 @@
+<div class="table-caption" aria-live="polite"><strong><%= @total_count %> matching transactions</strong><span>Page <%= @page %> of <%= @page_count %> · split rows shown separately</span></div>
+<% if @page_count > 1 %>
+<nav class="pagination" aria-label="Transaction pages">
+  <% if @page > 1 %><%= link_to 'Previous', transactions_path(request.query_parameters.merge(page: @page - 1)) %><% end %>
+  <% if @page < @page_count %><%= link_to 'Next', transactions_path(request.query_parameters.merge(page: @page + 1)) %><% end %>
+</nav>
+<% end %>

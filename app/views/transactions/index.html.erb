@@ -1,0 +1,57 @@
+<div class="page-heading">
+  <div><p class="eyebrow">EVERY DOLLAR, ACCOUNTED FOR</p><h1>Transactions</h1></div>
+  <div class="page-actions"><%= link_to 'Add transaction', new_transaction_path, class: 'primary-button' %><%= link_to 'Export CSV', transactions_path(request.query_parameters.merge(format: :csv)), class: 'secondary-button', data: { turbo: false } %></div>
+</div>
+
+<section class="card transactions-card">
+  <%= render 'filters', destination: transactions_path %>
+  <%= form_with url: bulk_update_transactions_path, method: :patch, data: { controller: 'transaction-selection', action: 'change->transaction-selection#update input->transaction-selection#update turbo:before-cache@document->transaction-selection#reset' } do %>
+    <% transaction_filter_params.each do |key, value| %><%= hidden_field_tag "return_filters[#{key}]", value %><% end %>
+    <div class="selection-toolbar" data-transaction-selection-target="toolbar" hidden>
+      <label class="check-option"><input type="checkbox" data-transaction-selection-target="all" data-action="transaction-selection#toggleAll"> Select this page</label>
+      <span data-transaction-selection-target="count" role="status" aria-live="polite">No transactions selected</span>
+      <button type="button" class="text-button" data-transaction-selection-target="clear" data-action="transaction-selection#clear" disabled>Clear selection</button>
+    </div>
+    <details class="bulk-panel" data-transaction-selection-target="panel">
+      <summary>Edit selected transactions</summary>
+      <div class="bulk-bar">
+        <strong>Changes apply only to selected transactions.</strong>
+        <%= select_tag 'bulk[category_id]', options_for_select([['Uncategorized', 'uncategorized']] + @category_options), include_blank: 'Keep category', 'aria-label': 'Category for selected transactions' %>
+        <%= select_tag 'bulk[expense_type]', options_for_select([['Use category default', 'automatic']] + ExpenseClassification::LABELS.map { |value, label| [label, value] }), include_blank: 'Keep expense type', 'aria-label': 'Expense type for selected transactions' %>
+        <%= text_field_tag 'bulk[tags]', nil, placeholder: 'Replace tags (comma separated)', 'aria-label': 'Tags for selected transactions' %>
+        <% %w[hidden duplicate transfer card_payment].each do |flag| %>
+          <%= select_tag "bulk[#{flag}]", options_for_select([[flag.humanize, ''], ['Set', '1'], ['Clear', '0']]), 'aria-label': flag.humanize %>
+        <% end %>
+        <%= submit_tag 'Apply changes', class: 'primary-button', data: { transaction_selection_target: 'submit', turbo_submits_with: 'Applying…' } %>
+      </div>
+    </details>
+    <%= render 'pagination' %>
+    <div class="table-scroll">
+      <table class="responsive-table transaction-list" role="table" aria-label="Transactions">
+        <thead><tr><th scope="col">Select</th><th scope="col">Date</th><th scope="col">Description / account</th><th scope="col">Category</th><th scope="col">Flags / tags</th><th scope="col" class="amount">Amount</th></tr></thead>
+        <tbody>
+          <% @transactions.each do |t| %>
+            <% flags = [t.split_needs_review? ? 'Splits need review' : nil, t.hidden? ? 'Hidden' : nil, t.duplicate? ? 'Duplicate' : nil, t.transfer? ? 'Transfer' : nil, t.card_payment? ? 'Card payment' : nil, t.pending? ? 'Pending' : nil].compact %>
+            <tr>
+              <td class="transaction-select"><label class="transaction-selection"><%= check_box_tag 'ids[]', t.id, false, id: "transaction_#{t.id}_selected", 'aria-label': "Select #{t.name} on #{t.date}", data: { transaction_selection_target: 'item' } %></label></td>
+              <td class="transaction-date nowrap" data-label="Date"><%= t.date %></td>
+              <td class="transaction-description"><strong><%= link_to t.name, transaction_path(t.parent || t) %></strong><small><%= t.account_label %></small></td>
+              <td class="transaction-category" data-label="Category"><div><%= t.is_split? ? 'Split transaction' : t.category&.display_name || 'Uncategorized' %><% if t.amount.positive? %><small><%= ExpenseClassification::LABELS.fetch(@expense_classifier.for_transaction(t)) %> expense</small><% end %><small><%= 'Automatic category' if %w[provider merchant_history].include?(t.category_origin) %><%= 'Category needs review' if t.category_suggestion_reason.present? %></small></div></td>
+              <td class="transaction-flags <%= 'mobile-empty' if flags.empty? && t.tags.blank? && t.classification_origin != 'automatic' && t.suggested_classification.blank? %>" data-label="Flags / tags"><div><%= flags.join(' · ') %><small><%= t.tags %></small><small><%= 'Auto detected' if t.classification_origin == 'automatic' %><%= "Suggested #{t.suggested_classification.humanize.downcase}" if t.suggested_classification.present? %></small></div></td>
+              <td class="transaction-amount amount <%= 'positive' if t.amount.negative? %>"><%= money(t.amount, t.iso_currency_code) %></td>
+            </tr>
+          <% end %>
+          <% if @transactions.empty? %><tr><td colspan="6" class="empty-state"><% if transaction_filter_params.present? %><h2>No matching transactions</h2><p>Try a broader search or remove a filter.</p><%= link_to 'Clear filters', transactions_path, class: 'secondary-button' %><% else %><h2>Your transactions will appear here</h2><p>Add a transaction or import a CSV to start organizing your finances.</p><div class="empty-actions"><%= link_to 'Add transaction', new_transaction_path, class: 'primary-button' %><%= link_to 'Import CSV', new_import_path, class: 'secondary-button' %></div><% end %></td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>
+<details class="card transaction-tools">
+  <summary>Organize &amp; review</summary>
+  <div class="transaction-tools-content">
+    <div class="action-group"><%= link_to 'Find possible duplicates', duplicates_transactions_path, class: 'secondary-button' %><%= link_to 'View marked duplicates', transactions_path(flag: 'duplicate'), class: 'text-button' %></div>
+    <section><h2>Automatic transfer detection</h2><p>Bank categories and corroborated movements between your accounts are excluded automatically. Uncertain matches stay in reports for review. Your manual choices and rules take precedence.</p><div class="action-group"><%= button_to 'Scan cached history', classify_transactions_path, class: 'secondary-button', data: { turbo_submits_with: 'Scanning…' } %><%= link_to 'Review suggestions', transactions_path(flag: 'suggested'), class: 'text-button' %></div></section>
+    <section><h2>Automatic categories</h2><p>Uses your rules, consistent merchant history and high-confidence bank categories. Existing manual and imported categories stay protected; uncertain choices need review.</p><div class="action-group"><%= button_to 'Categorize cached history', categorize_transactions_path, class: 'secondary-button', data: { turbo_submits_with: 'Categorizing…' } %><%= link_to 'Review category suggestions', transactions_path(flag: 'category_review'), class: 'text-button' %><%= link_to 'Manage rules', transaction_rules_path, class: 'text-button' %></div></section>
+  </div>
+</details>

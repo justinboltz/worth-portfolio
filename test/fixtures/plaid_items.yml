@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  institution: one
+  plaid_item_id: MyString
+  access_token: MyText
+  cursor: MyString
+  status: MyString
+  last_synced_at: 2026-02-05 14:38:07
+
+two:
+  user: two
+  institution: two
+  plaid_item_id: MyString
+  access_token: MyText
+  cursor: MyString
+  status: MyString
+  last_synced_at: 2026-02-05 14:38:07

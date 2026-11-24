@@ -1,0 +1,8 @@
+<%= link_to 'Overview', root_path, class: current_page?(root_path) ? 'active' : nil, aria: { current: current_page?(root_path) ? 'page' : nil } %>
+<%= link_to 'Transactions', transactions_path, class: controller_name == 'transactions' ? 'active' : nil, aria: { current: controller_name == 'transactions' ? 'page' : nil } %>
+<%= link_to 'Budgets', budgets_path, class: controller_name == 'budgets' ? 'active' : nil, aria: { current: controller_name == 'budgets' ? 'page' : nil } %>
+<%= link_to 'Recurring', recurring_items_path, class: controller_name == 'recurring_items' ? 'active' : nil, aria: { current: controller_name == 'recurring_items' ? 'page' : nil } %>
+<%= link_to 'Trends', trends_path, class: controller_name == 'trends' ? 'active' : nil, aria: { current: controller_name == 'trends' ? 'page' : nil } %>
+<%= link_to 'Categories', categories_path, class: controller_name == 'categories' ? 'active' : nil, aria: { current: controller_name == 'categories' ? 'page' : nil } %>
+<%= link_to 'Assets', manual_assets_path, class: controller_name == 'manual_assets' ? 'active' : nil, aria: { current: controller_name == 'manual_assets' ? 'page' : nil } %>
+<%= link_to 'Import data', new_import_path, class: controller_name == 'imports' ? 'active' : nil, aria: { current: controller_name == 'imports' ? 'page' : nil } %>

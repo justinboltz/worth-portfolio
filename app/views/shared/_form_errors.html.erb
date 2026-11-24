@@ -1,0 +1,5 @@
+<% if record.errors.any? %>
+  <div class="form-errors" id="<%= dom_id(record, :errors) %>" role="alert" tabindex="-1" data-controller="form-errors" data-form-errors-attributes-value="<%= record.errors.attribute_names.to_json %>">
+    <ul><% record.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+  </div>
+<% end %>

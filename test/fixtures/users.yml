@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  email: one@example.com
+  password_digest: $2a$12$00BFf2SkTh3r/BLTNQj50eKtd8Vp2zThxPqCwi2NeqXfeIbafsNBu
+  session_token: session_token_one
+
+two:
+  email: two@example.com
+  password_digest: $2a$12$00BFf2SkTh3r/BLTNQj50eKtd8Vp2zThxPqCwi2NeqXfeIbafsNBu
+  session_token: session_token_two

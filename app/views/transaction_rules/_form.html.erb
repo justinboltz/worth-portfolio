@@ -1,0 +1,19 @@
+<%= form_with model: rule, namespace: "rule_#{rule.id || 'new'}", class: 'stack-form rule-form', data: { turbo: false } do |f| %>
+<datalist id="rule-source-accounts-<%= rule.id || 'new' %>"><% @source_accounts.each do |name| %><option value="<%= name %>"><% end %></datalist>
+<div class="form-grid">
+<% if rule.merchant_key.present? %>
+<div><strong>Exact merchant: <%= rule.match_text %></strong><p class="muted">This saved merchant preference can also be limited to an account.</p><%= f.hidden_field :match_text %></div>
+<% else %>
+<label>Description match<%= f.select :description_operator, TransactionRule::DESCRIPTION_OPERATORS.map { |value, label| [label, value] } %></label>
+<label>Description text (optional)<%= f.text_field :match_text, placeholder: 'e.g. Kroger' %></label>
+<% end %>
+<label>Linked account (optional)<%= f.select :account_id, @accounts.map { |a| ["#{a.name}#{a.mask.present? ? " · ending #{a.mask}" : ''}", a.id] }, include_blank: 'Any linked account' %></label>
+<label>Imported source account name (optional)<%= f.text_field :source_account_name, list: "rule-source-accounts-#{rule.id || 'new'}", placeholder: 'Exact name from CSV history' %></label>
+<label>Assign category<%= f.select :category_id, @categories.map { |c| [c.display_name, c.id] }, include_blank: 'Keep category' %></label>
+<label>Cash-flow action<%= f.select :kind, %w[regular transfer card_payment hidden].map { |v| [v == 'regular' ? 'No additional flag' : v.humanize, v] } %></label>
+<label>Tags to add<%= f.text_field :tags %></label>
+</div>
+<p class="muted">Add a description, an account, or both. All supplied conditions must match. Descriptions and imported account names ignore case. Choose either a linked account or an imported source name.</p>
+<label class="rule-history-option"><%= check_box_tag :apply_existing, '1', params[:apply_existing] == '1', id: "apply-existing-#{rule.id || 'new'}" %> Apply to existing matching transactions too (saved category choices stay protected)</label>
+<div class="form-actions"><%= f.button 'Preview matches', name: :preview, value: '1', class: 'secondary-button' %><%= f.submit rule.persisted? ? 'Update rule' : 'Create rule', class: 'primary-button' %></div>
+<% end %>

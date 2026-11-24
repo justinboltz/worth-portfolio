@@ -1,0 +1,39 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  account: one
+  plaid_item: one
+  category: one
+  plaid_transaction_id: MyString
+  pending: false
+  amount: 9.99
+  iso_currency_code: MyString
+  date: 2026-02-05
+  authorized_date: 2026-02-05
+  name: MyString
+  merchant_name: MyString
+  merchant_entity_id: MyString
+  payment_channel: MyString
+  pending_transaction_id: MyString
+  original_description: MyString
+  notes: MyText
+
+two:
+  user: two
+  account: two
+  plaid_item: two
+  category: two
+  plaid_transaction_id: MyString
+  pending: false
+  amount: 9.99
+  iso_currency_code: MyString
+  date: 2026-02-05
+  authorized_date: 2026-02-05
+  name: MyString
+  merchant_name: MyString
+  merchant_entity_id: MyString
+  payment_channel: MyString
+  pending_transaction_id: MyString
+  original_description: MyString
+  notes: MyText

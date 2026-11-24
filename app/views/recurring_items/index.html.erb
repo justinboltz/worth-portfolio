@@ -1,0 +1,39 @@
+<div class="page-heading"><div><p class="eyebrow">STAY A STEP AHEAD</p><h1>Bills &amp; subscriptions</h1><p>Expected payments and income, with dates and amounts you control.</p></div><%= link_to 'Add recurring item', new_recurring_item_path, class: 'primary-button' %></div>
+<% if @items.any? %>
+  <div class="summary-grid recurring-summary">
+    <% [['expense', 'Expected payments'], ['income', 'Expected income']].each do |direction, label| %>
+      <section class="card metric"><p><%= label %> · next 30 days</p><% totals = @totals.select { |(kind, _), _| kind == direction } %><% if totals.empty? %><strong>None scheduled</strong><% else %><% totals.each do |(_, currency), amount| %><strong><%= money(amount, currency) %></strong><% end %><% end %><small><%= @from.strftime('%b %-d') %>–<%= @to.strftime('%b %-d, %Y') %> · estimates</small></section>
+    <% end %>
+  </div>
+<% end %>
+<section class="card">
+  <div class="card-heading"><div><h2>Next 30 days</h2><p>Estimates do not change your spending, budgets, or balances.</p></div><span class="muted"><%= @items.count { |item| item.status == 'active' } %> active · <%= @items.count { |item| item.status == 'paused' } %> paused</span></div>
+  <% if @upcoming.any? %>
+    <ol class="upcoming-list">
+      <% @upcoming.each do |date, item| %>
+        <li><div class="upcoming-date"><span><%= date.strftime('%b') %></span><strong><%= date.day %></strong></div><div class="upcoming-description"><strong><%= link_to item.name, edit_recurring_item_path(item) %></strong><small><%= item.account_label %><%= ' · Account excluded from tracking' if item.account && !item.account.tracked? %> · <%= RecurringItem::FREQUENCIES.fetch(item.frequency) %></small></div><div class="upcoming-amount <%= 'positive' if item.direction == 'income' %>"><strong><%= '+' if item.direction == 'income' %><%= money(item.amount, item.currency) %></strong><small><%= item.direction == 'income' ? 'Expected income' : 'Expected payment' %></small></div></li>
+      <% end %>
+    </ol>
+  <% else %>
+    <div class="empty-state"><h3><%= @items.empty? ? 'Know what is coming next' : 'Nothing scheduled in the next 30 days' %></h3><p>Add a bill or income manually, or confirm a suggestion from your history below.</p><%= link_to 'Add recurring item', new_recurring_item_path, class: 'secondary-button' %></div>
+  <% end %>
+</section>
+<% if @items.any? %>
+  <section class="card padded"><h2>Your schedules</h2><div class="recurring-grid">
+    <% @items.each do |item| %><article class="recurring-tile"><div class="recurring-tile-heading"><h3><%= item.name %></h3><span class="category-tag"><%= item.status.humanize %></span></div><p><strong><%= money(item.amount, item.currency) %></strong> · <%= RecurringItem::FREQUENCIES.fetch(item.frequency) %> · <%= item.direction == 'income' ? 'Income' : 'Payment' %></p><small><%= item.account_label %><%= ' · Account excluded from tracking' if item.account && !item.account.tracked? %> · Next expected <%= item.next_occurrence.strftime('%b %-d, %Y') %></small>
+      <% latest = @histories[item.id].first %><% if latest && latest.amount.abs != item.amount %><p class="amount-change"><strong>Amount changed in recent history</strong><br>Latest: <%= money(latest.amount.abs, item.currency) %> on <%= latest.date.strftime('%b %-d') %>. Your estimate is <%= money(item.amount, item.currency) %>.</p><% end %>
+      <div class="action-group"><%= link_to 'Edit details', edit_recurring_item_path(item), class: 'secondary-button', aria: { label: "Edit recurring item: #{item.name}" } %><%= button_to item.status == 'active' ? 'Pause' : 'Resume', recurring_item_path(item), method: :patch, params: { recurring_item: { status: item.status == 'active' ? 'paused' : 'active' } }, class: 'text-button', aria: { label: "#{item.status == 'active' ? 'Pause' : 'Resume'} #{item.name}" } %></div></article><% end %>
+  </div></section>
+<% end %>
+<details class="card padded creation-panel" <%= 'open' if @items.empty? && @suggestions.any? %>>
+  <summary>Suggestions from your history · <%= @suggestion_count %></summary>
+  <p>These are patterns, not confirmed subscriptions. Each suggestion has at least three posted transactions with a consistent schedule. Confirm the details or dismiss it; nothing is added automatically.</p>
+  <% if @suggestions.empty? %><p class="muted">No new consistent patterns found. You can still add any bill or income manually.</p><% end %>
+  <div class="recurring-grid">
+    <% @suggestions.each do |suggestion| %><article class="recurring-tile"><h3><%= suggestion.transaction.merchant_name.presence || suggestion.transaction.name %></h3><p><strong><%= money(suggestion.transaction.amount.abs, suggestion.transaction.iso_currency_code) %></strong> · possibly <%= RecurringItem::FREQUENCIES.fetch(suggestion.frequency).downcase %></p><small><%= suggestion.transaction.account_label %> · <%= suggestion.transaction.amount.negative? ? 'Income' : 'Payment' %></small><p class="recurring-evidence"><%= pluralize(suggestion.history.size, 'matching transaction') %> · <%= money(suggestion.minimum, suggestion.transaction.iso_currency_code) %><%= "–#{money(suggestion.maximum, suggestion.transaction.iso_currency_code)}" if suggestion.minimum != suggestion.maximum %></p>
+      <details class="editor-details"><summary>Why this was suggested</summary><% suggestion.history.first(3).each do |transaction| %><p><%= transaction.date.strftime('%b %-d, %Y') %> · <%= link_to transaction.name, transaction_path(transaction) %> · <%= money(transaction.amount.abs, transaction.iso_currency_code) %></p><% end %></details>
+      <div class="action-group"><%= link_to 'Review & confirm', new_recurring_item_path(transaction_id: suggestion.transaction.id, frequency: suggestion.frequency), class: 'primary-button' %><%= button_to 'Dismiss', dismiss_recurring_items_path, params: { transaction_id: suggestion.transaction.id }, class: 'text-button', aria: { label: "Dismiss suggestion: #{suggestion.transaction.name}" } %></div></article><% end %>
+  </div>
+  <% if @suggestion_pages > 1 %><nav class="pagination" aria-label="Suggestion pages"><% if @suggestion_page > 1 %><%= link_to 'Previous suggestions', recurring_items_path(suggestion_page: @suggestion_page - 1) %><% end %><span>Page <%= @suggestion_page %> of <%= @suggestion_pages %></span><% if @suggestion_page < @suggestion_pages %><%= link_to 'More suggestions', recurring_items_path(suggestion_page: @suggestion_page + 1) %><% end %></nav><% end %>
+</details>
+<% if @dismissals.any? %><details class="card padded creation-panel"><summary>Dismissed suggestions · <%= @dismissals.size %></summary><% @dismissals.each do |dismissal| %><div class="dismissed-suggestion"><span><%= dismissal.name %></span><%= button_to 'Review again', restore_suggestion_recurring_items_path(dismissal), method: :delete, class: 'text-button', aria: { label: "Review #{dismissal.name} again" } %></div><% end %></details><% end %>

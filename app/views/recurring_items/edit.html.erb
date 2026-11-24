@@ -1,0 +1,8 @@
+<div class="page-heading"><div><p class="eyebrow">YOUR RECURRING DETAILS</p><h1><%= @item.name %></h1></div><%= link_to 'Back to recurring', recurring_items_path, class: 'secondary-button' %></div>
+<section class="card padded content-narrow"><%= render 'form' %></section>
+<% if @history.any? %>
+  <section class="card padded content-narrow"><h2>Recent matching history</h2><p>Posted activity for this merchant and account. An amount change may be a price increase or a different purchase; check the transaction before updating your estimate.</p>
+    <% @history.each do |transaction| %><div class="recurring-history"><span><%= transaction.date.strftime('%b %-d, %Y') %> · <%= link_to transaction.name, transaction_path(transaction) %></span><strong><%= money(transaction.amount.abs, transaction.iso_currency_code) %></strong></div><% end %>
+  </section>
+<% end %>
+<section class="card padded content-narrow"><h2>Stop tracking</h2><p>This removes the schedule and its future estimates. Your recorded transactions, balances, and reports stay intact.</p><%= button_to 'Stop tracking', recurring_item_path(@item), method: :delete, class: 'danger-button', form: { data: { turbo_confirm: "Stop tracking #{@item.name}? Recorded transactions will be kept." } } %></section>

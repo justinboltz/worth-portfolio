@@ -1,0 +1,39 @@
+<section class="card connections-card">
+  <div class="card-heading"><div><h2>Your connections</h2><p>Choose what you track and keep it up to date.</p></div></div>
+  <% if @plaid_items.any? %>
+    <div class="connection-actions">
+      <%= button_to 'Refresh stale accounts', refresh_stale_plaid_items_path, class: 'secondary-button', data: { turbo_submits_with: 'Queuing refresh…' } %>
+      <p class="muted">Refreshes connections last synced over an hour ago, including those never synced. New data depends on your bank’s availability.</p>
+      <% if @plaid_items.any?(&:sync_in_progress?) %><%= link_to 'Check refresh status', root_path, class: 'text-button' %><% end %>
+    </div>
+  <% end %>
+  <% @plaid_items.each do |item| %>
+    <div class="bank-connection">
+      <div class="connection-row">
+        <span class="bank-symbol" aria-hidden="true">B</span>
+        <div><strong><%= item.institution.name %></strong><small><%= item.accounts.count(&:tracked?) %> of <%= item.accounts.size %> accounts tracked<%= ' · Needs attention' if item.status_errored? %></small><small><%= item.last_synced_at ? "Last successful sync #{time_ago_in_words(item.last_synced_at)} ago" : 'Waiting for first sync' %></small></div>
+        <%= button_to item.sync_in_progress? ? 'Refresh queued' : 'Sync', sync_plaid_item_path(item), method: :post, class: 'secondary-button', disabled: item.sync_in_progress?, data: { turbo_submits_with: 'Queuing…' }, aria: { label: "Sync #{item.institution.name}" } %>
+      </div>
+      <% if item.accounts.any? %>
+        <details class="account-tracking">
+          <summary>Choose accounts to track</summary>
+          <%= form_with url: tracking_plaid_item_path(item), method: :patch do %>
+            <fieldset><legend>Accounts at <%= item.institution.name %></legend>
+              <%= hidden_field_tag 'account_ids[]', '' %>
+              <% item.accounts.sort_by(&:name).each do |account| %>
+                <label class="tracking-option">
+                  <%= check_box_tag 'account_ids[]', account.id, account.tracked?, id: "track_account_#{account.id}" %>
+                  <span><strong><%= account.name %><%= " ••#{account.mask}" if account.mask.present? %></strong><small><%= [account.account_type.humanize, account.subtype&.humanize].compact.uniq.join(' · ') %></small></span>
+                </label>
+              <% end %>
+            </fieldset>
+            <p class="muted">Unchecked accounts are excluded from balances, transactions, reports, and recurring outlooks. Saved history is kept and bank sync continues, so you can include them again anytime. Newly linked accounts start included.</p>
+            <%= submit_tag 'Save tracked accounts', class: 'secondary-button', data: { turbo_submits_with: 'Saving…' } %>
+          <% end %>
+        </details>
+      <% end %>
+    </div>
+  <% end %>
+  <%= link_to '+ Connect another bank', new_bank_connection_path, class: 'add-connection', data: { turbo: false } %>
+  <div class="soft-callout"><h3>Make your history feel at home.</h3><p>Bring your old transactions and categories with you.</p><%= link_to 'Import a CSV file', new_import_path %></div>
+</section>

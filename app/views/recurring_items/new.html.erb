@@ -1,0 +1,5 @@
+<div class="page-heading"><div><p class="eyebrow">STAY A STEP AHEAD</p><h1><%= @source_transaction ? 'Confirm recurring details' : 'Add a recurring item' %></h1><p>Track a bill, subscription, or income—even before its first transaction.</p></div></div>
+<section class="card padded content-narrow">
+  <% if @source_transaction %><p class="soft-callout">Suggested from your posted history. Confirm the amount and next date before adding it.</p><% end %>
+  <%= render 'form' %>
+</section>

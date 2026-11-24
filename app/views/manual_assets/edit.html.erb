@@ -1,0 +1,3 @@
+<div class="page-heading"><div><p class="eyebrow">KEEP YOUR VALUES UP TO DATE</p><h1>Edit asset</h1></div></div>
+<%= render "form" %>
+<section class="card valuation-history"><div class="card-heading"><h2>Valuation history</h2></div><table class="responsive-table" role="table" aria-label="Valuation history"><thead><tr><th scope="col">Date</th><th scope="col" class="amount">Value</th></tr></thead><tbody><% @asset.asset_valuations.order(valued_on: :desc).each do |valuation| %><tr><td data-label="Date"><%= valuation.valued_on %></td><td class="amount" data-label="Value"><%= money(valuation.value, @asset.currency) %></td></tr><% end %></tbody></table></section>

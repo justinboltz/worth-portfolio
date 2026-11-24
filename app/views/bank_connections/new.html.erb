@@ -1,0 +1,16 @@
+<% content_for :head do %>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<% end %>
+
+<div class="page-heading"><div><p class="eyebrow">YOUR ACCOUNTS, CONNECTED</p><h1>Connect a bank account</h1><p>Bring your accounts, balances, and transactions into Worth.</p></div></div>
+<section class="card padded content-narrow" data-controller="bank-connection">
+  <h2>Connect with Plaid</h2>
+  <p>Worth uses a read-only connection to import your financial activity.</p>
+  <p class="muted">Choose your institution, then securely authorize access through Plaid. You can also import a CSV if your bank is not supported.</p>
+  <div class="form-actions">
+    <button id="plaid-link-button" class="primary-button" type="button" data-bank-connection-target="button" data-action="bank-connection#open">Connect with Plaid</button>
+    <%= link_to 'Import a CSV', new_import_path, class: 'secondary-button' %>
+    <%= link_to 'Back to overview', root_path, class: 'text-button' %>
+  </div>
+  <p id="plaid-status" class="status-message" role="status" aria-live="polite" data-bank-connection-target="status"></p>
+</section>

@@ -1,0 +1,35 @@
+<div class="page-heading">
+  <div><p class="eyebrow">A CLEARER PICTURE</p><h1>Categories</h1><p>Organize spending and merge source categories into your existing structure.</p></div>
+  <%= link_to 'Transaction rules', transaction_rules_path, class: 'secondary-button' %>
+</div>
+<%= render 'shared/list_search', destination: categories_path, placeholder: 'Category or parent name', choices: [['Shared defaults', 'system'], ['Personal categories', 'personal']] %>
+<section class="card padded">
+  <h2>Create category</h2>
+  <%= form_with model: @draft, class: 'stack-form' do |f| %>
+    <%= render 'shared/form_errors', record: @draft %>
+    <div class="form-grid">
+      <label>Category name<%= f.text_field :name, required: true, placeholder: 'e.g. Professional development' %></label>
+      <label>Parent category<%= f.select :parent_id, @categories.map { |c| [c.display_name, c.id] }, include_blank: 'Top level' %></label>
+    </div>
+    <div class="form-actions"><%= f.submit 'Create', class: 'primary-button' %></div>
+  <% end %>
+</section>
+<section class="card padded">
+  <h2>Your category structure</h2>
+  <% @visible_categories.each do |c| %>
+    <div class="category-management">
+      <div class="category-heading"><strong><%= c.display_name %></strong><small><%= c.system? ? 'Shared default' : 'Personal category' %></small></div>
+      <details class="category-actions category-editor" <%= 'open' if c.errors.any? %>><summary aria-label="Manage category: <%= c.display_name %>">Manage category</summary>
+        <% if c.errors.any? %>
+          <%= render 'editor', category: c %>
+        <% else %>
+          <%= turbo_frame_tag dom_id(c, :editor), src: edit_category_path(c), loading: :lazy, data: { controller: 'lazy-editor', action: 'turbo:frame-missing->lazy-editor#unavailable turbo:fetch-request-error->lazy-editor#unavailable' } do %>
+            <p class="status-message" role="status"></p>
+            <%= link_to 'Open category editor', edit_category_path(c), class: 'text-button', data: { turbo_frame: '_top' } %>
+          <% end %>
+        <% end %>
+      </details>
+    </div>
+  <% end %>
+  <% if @visible_categories.empty? %><div class="empty-state"><h3>No categories match.</h3><p>Try another search or reset the filters.</p></div><% end %>
+</section>

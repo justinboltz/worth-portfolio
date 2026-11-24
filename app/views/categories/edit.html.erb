@@ -1,0 +1,6 @@
+<div class="page-heading"><div><h1>Manage category</h1><p><%= @category.display_name %></p></div><%= link_to 'Back to categories', categories_path, class: 'secondary-button' %></div>
+<section class="card padded content-narrow">
+  <%= turbo_frame_tag dom_id(@category, :editor) do %>
+    <%= render 'editor', category: @category %>
+  <% end %>
+</section>

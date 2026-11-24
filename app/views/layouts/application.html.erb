@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= page_title %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <%= link_to 'worth', root_path, class: 'wordmark' %>
+        <% if signed_in? %>
+          <nav class="desktop-navigation" aria-label="Main navigation"><%= render 'shared/navigation' %></nav>
+          <details class="profile" data-controller="dismissible" data-action="keydown.esc->dismissible#close click@window->dismissible#outside turbo:before-cache@document->dismissible#reset"><summary>My account</summary><div><%= link_to 'Change password', edit_password_path %><%= button_to 'Sign out', sign_out_path, method: :delete %></div></details>
+          <details class="mobile-navigation" data-controller="dismissible" data-action="keydown.esc->dismissible#close click@window->dismissible#outside turbo:before-cache@document->dismissible#reset">
+            <summary>Menu</summary>
+            <nav aria-label="Mobile navigation"><%= render 'shared/navigation' %></nav>
+          </details>
+        <% end %>
+      </div>
+    </header>
+    <div class="app-shell <%= 'guest-shell' unless signed_in? %>">
+      <% if signed_in? %><aside class="account-sidebar"><details class="accounts-panel" open data-controller="responsive-disclosure"><summary class="sidebar-heading">Accounts &amp; assets</summary><div class="accounts-content"><%= link_to '+ Connect a bank', new_bank_connection_path, data: { turbo: false } %>
+        <% @sidebar_accounts.group_by(&:account_type).each do |type, accounts| %><details class="account-group" open><summary><%= type == 'depository' ? 'Cash' : type.titleize %> <span><% accounts.group_by { |a| a.iso_currency_code.presence || 'Unknown' }.each do |currency, group| %><%= money(group.reject(&:net_worth_excluded?).sum { |a| signed_balance(a) }, currency) %> <% end %></span></summary><% accounts.each do |account| %><%= link_to transactions_path(account_id: account.id), class: 'account-link' do %><span><strong><%= account.name %></strong><small><%= account.mask.present? ? "Ending in #{account.mask}" : account.subtype&.titleize %></small><% if account.plaid_item_id.nil? %><small>Imported<%= " · As of #{account.import_metadata['as_of_date']}" if account.import_metadata['as_of_date'].present? %></small><% end %><% if account.net_worth_excluded? %><small>Excluded from net worth</small><% end %></span><b><%= money(account.current_balance, account.iso_currency_code) %></b><% end %><% end %></details><% end %>
+        <section class="account-group"><h3>Manual assets</h3><% @sidebar_assets.each do |asset| %><%= link_to edit_manual_asset_path(asset), class: 'account-link' do %><span><strong><%= asset.name %></strong><small>Valued <%= asset.valued_on %></small></span><b><%= money(asset.value, asset.currency) %></b><% end %><% end %><%= link_to '+ Add asset', new_manual_asset_path %></section><p class="sidebar-note">Your finances, in one place.<br>Read-only bank connections.</p></div></details></aside><% end %>
+      <main id="main-content" tabindex="-1">
+    <% flash.each do |type, message| %>
+      <p class="flash flash-<%= type %>" role="<%= type == 'alert' ? 'alert' : 'status' %>"><%= message %></p>
+    <% end %>
+    <%= yield %>
+      </main>
+    </div>
+  </body>
+</html>
