@@ -12,6 +12,8 @@ module PlaidApi
     }.freeze
 
     def self.from_env
+      raise KeyError, "Bank linking is unavailable in the fictional demo" if ENV["WORTH_DEMO"] == "1"
+
       new(
         client_id: ENV["PLAID_CLIENT_ID"].presence || Rails.application.credentials.dig(:plaid, :client_id) || raise(KeyError, "Run bin/rails plaid:configure first"),
         secret: ENV["PLAID_SECRET"].presence || Rails.application.credentials.dig(:plaid, :secret) || raise(KeyError, "Run bin/rails plaid:configure first"),
